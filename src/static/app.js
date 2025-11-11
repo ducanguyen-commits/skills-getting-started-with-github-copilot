@@ -4,6 +4,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Helper: derive 1-2 character initials from an email (before the @)
+  function getInitials(email) {
+    const local = (email || "").split("@")[0] || "";
+    // split on non-alphanumeric to try get meaningful pieces
+    const parts = local.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+    if (parts.length === 0) return (local[0] || "").toUpperCase();
+    if (parts.length === 1) return (parts[0].slice(0, 2) || parts[0]).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -25,6 +35,24 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+
+          <div class="participants-section">
+            <h5>Participants</h5>
+            ${details.participants && details.participants.length > 0
+              ? `<ul class="participants-list">
+                  ${details.participants
+                    .map(
+                      (email) => `
+                    <li>
+                      <span class="avatar">${getInitials(email)}</span>
+                      <span class="participant-email">${email}</span>
+                      <button class="delete-participant" data-activity="${name}" data-email="${email}" title="Unregister">✕</button>
+                    </li>`
+                    )
+                    .join("")}
+                </ul>`
+              : `<p class="no-participants">No participants yet. Be the first to sign up!</p>`}
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh the activities list to show the new participant
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -78,6 +107,48 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // Handle delete participant button clicks
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("delete-participant")) {
+      const email = event.target.dataset.email;
+      const activity = event.target.dataset.activity;
+
+      if (confirm(`Are you sure you want to unregister ${email} from ${activity}?`)) {
+        try {
+          const response = await fetch(
+            `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+            {
+              method: "POST",
+            }
+          );
+
+          const result = await response.json();
+
+          if (response.ok) {
+            messageDiv.textContent = result.message || "Successfully unregistered from activity";
+            messageDiv.className = "success";
+            fetchActivities(); // Refresh the activities list
+          } else {
+            messageDiv.textContent = result.detail || "An error occurred";
+            messageDiv.className = "error";
+          }
+
+          messageDiv.classList.remove("hidden");
+
+          // Hide message after 5 seconds
+          setTimeout(() => {
+            messageDiv.classList.add("hidden");
+          }, 5000);
+        } catch (error) {
+          messageDiv.textContent = "Failed to unregister. Please try again.";
+          messageDiv.className = "error";
+          messageDiv.classList.remove("hidden");
+          console.error("Error unregistering:", error);
+        }
+      }
     }
   });
 
