@@ -203,3 +203,21 @@ footer {
   border-radius: 6px;
   border: 1px solid #f0f0f5;
 }
+
+.delete-participant {
+  margin-left: auto;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.delete-participant:hover {
+  background-color: #c82333;
+}
